@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আলোকযাত্রা</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="phone-container">
+
+    <header>
+        <h1 id="header-title">ড্যাশবোর্ড</h1>
+    </header>
+
+    <div class="content">
+        
+        <div id="page-menu" class="page active-page">
+            <div class="welcome-banner">
+                <h3>আলোকযাত্রা ড্যাশবোর্ড</h3>
+                <p>স্মার্ট সোসাইটি গভর্ন্যান্স প্ল্যাটফর্ম</p>
+            </div>
+
+            <div class="menu-grid">
+                <div class="menu-card card-orange" onclick="switchPage('report')">
+                    <div class="custom-icon icon-report"><span></span></div>
+                    <h4>নতুন রিপোর্ট</h4>
+                    <p>সমস্যা, শিশুশ্রম বা পরিবেশ দূর্ষণ সরাসরি জানান</p>
+                </div>
+
+                <div class="menu-card card-yellow" onclick="switchPage('emergency')">
+                    <div class="custom-icon icon-phone"><span></span></div>
+                    <h4>জরুরি হেল্পলাইন</h4>
+                    <p>পানিবন্দী, হারিয়ে যাওয়া বা অন্যান্য টিম-মুখী উদ্ধার সেবা</p>
+                </div>
+
+                <div class="menu-card card-pastel" onclick="switchPage('tracker')">
+                    <div class="custom-icon icon-tracker"><span></span></div>
+                    <h4>রিপোর্ট ট্র্যাকিং</h4>
+                    <p>আপনার পাঠানো রিপোর্টের বর্তমান অবস্থা দেখুন</p>
+                </div>
+
+                <div class="menu-card card-pink" id="admin-menu-card" style="display: none;" onclick="accessAdminPanel()">
+                    <div class="custom-icon icon-admin"><span></span></div>
+                    <h4>অ্যাকশন প্যানেল</h4>
+                    <p>প্রিফেক্ট ও মেন্টরদের দ্বারা তথ্য যাচাইকরণ</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="page-report" class="page">
+            <button class="btn-back" onclick="switchPage('menu')">
+                <span class="custom-back-icon"></span> ড্যাশবোর্ডে ফিরে যান
+            </button>
+
+            <div class="form-group" style="margin-top: 10px;">
+                <label>সমস্যার ধরন</label>
+                <select id="incident-category" onchange="simulateAIPrioritization(this.value)">
+                    <option value="">বাছাই করুন...</option>
+                    <option value="critical">চুরি / ডাকাতি</option>
+                    <option value="critical">মাদকসেবন</option>
+                    <option value="critical">বাল্যবিবাহ / ইভটিজিং</option>
+                    <option value="critical_flood">বন্যায় পানিবন্দী</option>
+                    <option value="critical_missing">হারিয়ে যাওয়া ব্যক্তি</option>
+                    <option value="medium">স্কুল ড্রপআউট / শিশুশ্রম</option>
+                    <option value="general">নিরাপত্তা / রাস্তার গর্ত / ভাঙা ব্রিজ / বিদ্যুতের ঝুঁকি</option>
+                    <option value="medium_env">অগ্নিকাণ্ডের ঝুঁকি / পরিবেশ / নদী দূষণ</option>
+                    <option value="medium_res">প্লাস্টিক বর্জ্য / অবৈধ বালু উত্তোলন / বৃক্ষনিধন</option>
+                    <option value="general_edu">শিক্ষা উপকরণের সংকট</option>
+                    <option value="critical_health">ডেঙ্গুর প্রাদুর্ভাব / নোংরা ড্রেন / জমে থাকা পানি</option>
+                </select>
+            </div>
+
+            <div id="ai-priority-badge" class="ai-priority-box" style="display: none;">
+                <span>AI অগ্রাধিকার বিশ্লেষণ:</span> 
+                <strong id="ai-priority-text">---</strong>
+            </div>
+
+            <div class="form-group">
+                <label>ঘটনাস্থল / এলাকা</label>
+                <input type="text" id="incident-location" placeholder="যেমন: আদর্শ সদর, ওয়ার্ড ০৩">
+            </div>
+
+            <div class="form-group">
+                <label>নিকটবর্তী ল্যান্ডমার্ক <span class="optional-tag">(ঐচ্ছিক)</span></label>
+                <input type="text" id="incident-landmark" placeholder="যেমন: ক্যাফেটেরিয়ার পাশে বা স্কুল সংলগ্ন">
+            </div>
+
+            <div class="form-group">
+                <label>বিস্তারিত বিবরণ</label>
+                <textarea id="incident-details" placeholder="সমস্যার সংক্ষিপ্ত বিবরণ দিন..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>প্রমাণ সংযুক্ত করুন</label>
+                <input type="file" accept="image/*,video/*,audio/*" id="incident-media">
+            </div>
+
+            <div class="form-group" id="phone-field-wrapper">
+                <label>যোগাযোগের নম্বর <span class="optional-tag">(ঐচ্ছিক)</span></label>
+                <input type="tel" id="incident-phone" placeholder="01XXXXXXXXX">
+            </div>
+
+            <div class="form-group toggle-container">
+                <input type="checkbox" id="anon-toggle" style="width: auto; cursor: pointer;" onchange="togglePhoneField()">
+                <label for="anon-toggle" id="label-anon" style="margin-bottom: 0; cursor: pointer; color: #d63384; font-weight: bold;">
+                    🔒 পরিচয় গোপন রাখুন (সুরক্ষিত মোড)
+                </label>
+            </div>
+
+            <div class="form-btn-group">
+                <button class="btn btn-primary" onclick="submitReportDemo()">রিপোর্ট জমা দিন</button>
+            </div>
+        </div>
+
+        <div id="page-tracker" class="page">
+            <button class="btn-back" onclick="switchPage('menu')">
+                <span class="custom-back-icon"></span> ড্যাশবোর্ডে ফিরে যান
+            </button>
+            <div id="empty-tracker-msg" style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 0.9rem;">
+                আপনি এখনও কোনো রিপোর্ট জমা দেননি।
+            </div>
+            <div id="tracker-list-container"></div>
+        </div>
+
+        <div id="page-admin" class="page">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <button class="btn-back" style="margin-bottom: 0;" onclick="switchPage('menu')">
+                    <span class="custom-back-icon"></span> ড্যাশবোর্ড
+                </button>
+                <button class="btn-back" style="margin-bottom: 0; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="logoutAdmin()">🔒 মোড বন্ধ করুন</button>
+            </div>
+            
+            <div id="empty-admin-msg" style="text-align: center; color: var(--muted); margin-top: 40px; font-size: 0.9rem;">
+                পর্যালোচনা করার মতো কোনো পেন্ডিং রিপোর্ট সিস্টেমে নেই।
+            </div>
+            
+            <div id="admin-list-container"></div>
+        </div>
+
+        <div id="page-emergency" class="page">
+            <div class="sos-container" onclick="triggerSOSPanicAlert()">
+                <div class="sos-button">SOS</div>
+                <p style="margin-top: 8px; font-weight: bold; color: var(--accent-pink);">জরুরি পরিস্থিতি: এক ট্যাপে প্রিফেক্ট ও প্রশাসনকে অ্যালার্ট পাঠান</p>
+            </div>
+
+            <div class="location-card">
+                <strong>আপনার বর্তমান অবস্থান:</strong><br>
+                <span id="gps-text">📍 জিপিএস এখনও উক্ত অ্যাপ এ নেই।</span>
+                <div id="gps-details" style="margin-top: 8px; font-size: 0.85rem; color: #4a4e69;"></div>
+                <button class="btn btn-primary" style="margin-top: 12px; width: auto; padding: 10px 14px;" onclick="updateLocation()">লোকেশন রিফ্রেশ করুন</button>
+                <p style="margin-top: 10px; font-size: 0.88rem; color: #5d4037;">এই লোকেশনটি ব্যবহার করে বন্যা বা হারিয়ে যাওয়া অবস্থায় উদ্ধারকারী দল আপনাকে দ্রুত খুঁজে পাবে।</p>
+            </div>
+
+            <div id="location-map-container" class="location-map-card" style="display:none; margin-bottom: 18px;"></div>
+
+            <div class="emergency-grid">
+                <button class="btn btn-emergency-tile tile-red" onclick="triggerFloodRescueAlert()">🌊 বন্যায় পানিবন্দী উদ্ধার</button>
+                <button class="btn btn-emergency-tile tile-orange" onclick="triggerMissingPersonAlert()">🧭 হারিয়ে যাওয়া ব্যক্তি উদ্ধার</button>
+                <a href="tel:999" class="btn btn-emergency-tile tile-red">🚨 জাতীয় জরুরি সেবা (999)</a>
+                <a href="tel:109" class="btn btn-emergency-tile tile-orange">👧 নারী ও শিশু নির্যাতন প্রতিরোধ (109)</a>
+                <a href="tel:333" class="btn btn-emergency-tile tile-yellow">🏛️ সরকারি সেবা ও তথ্য (333)</a>
+                <a href="tel:1098" class="btn btn-emergency-tile tile-red" style="background-color: #ffcad4;">👶 শিশু সহায়তা হেল্পলাইন (1098)</a>
+                <a href="tel:106" class="btn btn-emergency-tile tile-orange" style="background-color: #ffe5d9;">🛡️ দুর্নীতি দমন কমিশন (106)</a>
+                <a href="tel:16122" class="btn btn-emergency-tile tile-yellow" style="background-color: #fcf6bd;">🗺️ ভূমি সেবা হেল্পলাইন (16122)</a>
+            </div>
+        </div>
+
+        <div id="page-settings" class="page">
+            <button class="btn-back" onclick="switchPage('menu')">
+                <span class="custom-back-icon"></span> ড্যাশবোর্ডে ফিরে যান
+            </button>
+            
+            <div class="settings-section" style="margin-top: 10px;">
+                <h3>🛡️ প্রিফেক্ট ও মেন্টর কন্ট্রোল</h3>
+                <div class="setting-toggle-item">
+                    <span>এডমিন প্যানেল দেখাতে টগল করুন</span>
+                    <input type="checkbox" id="admin-mode-toggle" onchange="toggleAdminMode(this.checked)">
+                </div>
+                <div class="setting-toggle-item">
+                    <span>অ্যাকাউন্ট পেজে যান</span>
+                    <button class="btn btn-primary" onclick="switchPage('auth')" style="width:auto; padding: 10px 14px;">লগইন / সাইনআপ</button>
+                </div>
+            </div>
+
+            <div class="settings-section" style="margin-top: 15px; opacity: 0.7;">
+                <h3>⚙️ সাধারণ সেটিংস</h3>
+                <div class="setting-toggle-item">
+                    <span>পুশ নোটিফিকেশন</span>
+                    <input type="checkbox" checked disabled>
+                </div>
+                <div class="setting-toggle-item">
+                    <span>উচ্চ রেজোলিউশন ডাটা কম্প্রেশন</span>
+                    <input type="checkbox" checked disabled>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-auth" class="page">
+            <button class="btn-back" onclick="switchPage('menu')">
+                <span class="custom-back-icon"></span> ড্যাশবোর্ডে ফিরে যান
+            </button>
+            <div class="welcome-banner" style="border-radius: 16px; padding: 18px; margin-bottom: 14px;">
+                <h3>অ্যাকাউন্ট প্রবেশ</h3>
+                <p>নিবন্ধন করুন অথবা লগইন করুন। অ্যাডমিন অনুমতি নেওয়ার জন্য আপনার অ্যাকাউন্টে রোল অ্যাসাইন করতে হবে Supabase ড্যাশবোর্ড থেকে।</p>
+            </div>
+            <div class="form-group">
+                <label>ইমেল</label>
+                <input type="email" id="auth-email" placeholder="you@example.com">
+            </div>
+            <div class="form-group">
+                <label>পাসওয়ার্ড</label>
+                <input type="password" id="auth-password" placeholder="********">
+            </div>
+            <div class="form-btn-group" style="display: grid; gap: 12px;">
+                <button class="btn btn-primary" onclick="loginUser()">লগইন</button>
+                <button class="btn" style="background:#ffcad4; color:#2b2d42;" onclick="signupUser()">নতুন অ্যাকাউন্ট</button>
+                <button class="btn" style="background:#fff3cd; color:#664d03;" onclick="logoutUser()">লগআউট</button>
+            </div>
+            <div id="auth-message" style="margin-top: 16px; color: var(--muted);"></div>
+        </div>
+
+    </div>
+
+    <div id="global-image-modal" class="image-lightbox-overlay" onclick="closeImageModal()">
+        <span class="lightbox-close-btn">&times;</span>
+        <img class="lightbox-modal-content" id="modal-target-image" alt="Enlarged Report Attachment">
+    </div>
+
+    <nav>
+        <button class="nav-item active" id="btn-nav-menu" onclick="switchPage('menu')">
+            <span class="nav-custom-icon tab-icon-home"><span></span></span>
+            <span>ড্যাশবোর্ড</span>
+        </button>
+        <button class="nav-item" id="btn-nav-report" onclick="switchPage('report')">
+            <span class="nav-custom-icon tab-icon-report"><span></span></span>
+            <span>রিপোর্ট</span>
+        </button>
+        <button class="nav-item" id="btn-nav-tracker" onclick="switchPage('tracker')">
+            <span class="nav-custom-icon tab-icon-tracker"><span></span></span>
+            <span>ট্র্যাকিং</span>
+        </button>
+        <button class="nav-item" id="btn-nav-settings" onclick="switchPage('settings')">
+            <span class="nav-custom-icon tab-icon-settings"><span></span></span>
+            <span>সেটিংস</span>
+        </button>
+        <button class="nav-item" id="btn-nav-auth" onclick="switchPage('auth')">
+            <span class="nav-custom-icon tab-icon-user"><span></span></span>
+            <span>একাউন্ট</span>
+        </button>
+    </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
