@@ -15,7 +15,7 @@ let userSubmittedReports = [
         location: "ঝাওতলা রেলগেট সংলগ্ন রোড",
         details: "রাস্তার মাঝখানে বিদ্যুতের তার ঝুলে আছে, যেকোনো সময় বড় দুর্ঘটনা ঘটতে পারে।",
         status: "Pending",
-        phone: "01711122233",
+        phone: "01923746597",
         mediaSrc: ""
     }
 ];
