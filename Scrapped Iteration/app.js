@@ -1,3 +1,12 @@
+const API_BASE_URL = "http://localhost:3000/api";
+const SUPABASE_URL = window.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "";
+const supabase = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY)
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+let currentUser = null;
+let lastLocationCoords = null;
+
 // গ্লোবাল ডাটাবেজ সিমুলেশন অ্যারে
 let userSubmittedReports = [
     {
@@ -6,15 +15,256 @@ let userSubmittedReports = [
         location: "ঝাওতলা রেলগেট সংলগ্ন রোড",
         details: "রাস্তার মাঝখানে বিদ্যুতের তার ঝুলে আছে, যেকোনো সময় বড় দুর্ঘটনা ঘটতে পারে।",
         status: "Pending",
-        phone: "01711122233",
-        mediaSrc: "" // ডেমো ডাটাতে ইমেজ ব্ল্যাঙ্ক
+        phone: "01923746597",
+        mediaSrc: ""
     }
 ];
+
+function isSupabaseReady() {
+    return supabase !== null;
+}
+
+function showAuthMessage(message, isError = false) {
+    const authMessage = document.getElementById('auth-message');
+    if (!authMessage) return;
+    authMessage.style.color = isError ? '#d63384' : '#2b2d42';
+    authMessage.innerText = message;
+}
+
+function isAdmin() {
+    return currentUser?.app_metadata?.roles?.includes('admin');
+}
+
+function updateAuthUI() {
+    const authMessage = document.getElementById('auth-message');
+    if (!authMessage) return;
+
+    if (currentUser) {
+        authMessage.innerText = `সাইন ইন হয়েছে: ${currentUser.email}`;
+        authMessage.style.color = '#2b2d42';
+    } else {
+        authMessage.innerText = 'দয়া করে লগইন করুন অথবা সাইন আপ করুন।';
+        authMessage.style.color = '#6c757d';
+    }
+
+    const adminToggleRow = document.getElementById('admin-mode-toggle')?.closest('.setting-toggle-item');
+    if (adminToggleRow) {
+        adminToggleRow.style.display = isAdmin() ? 'flex' : 'none';
+    }
+
+    const adminCard = document.getElementById('admin-menu-card');
+    if (adminCard) {
+        // TODO: Re-enable admin permission check later
+        // adminCard.style.display = isAdmin() ? 'flex' : 'none';
+        adminCard.style.display = 'flex'; // Show for everyone for now
+    }
+}
+
+async function loadCurrentUser() {
+    if (!isSupabaseReady()) return;
+
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+        console.warn('Supabase auth session failed:', error);
+        return;
+    }
+
+    currentUser = data.session?.user ?? null;
+    updateAuthUI();
+}
+
+if (isSupabaseReady()) {
+    supabase.auth.onAuthStateChange((event, session) => {
+        currentUser = session?.user ?? null;
+        updateAuthUI();
+    });
+}
+
+async function loginUser() {
+    if (!isSupabaseReady()) {
+        showAuthMessage('Supabase configuration প্রয়োজন। config.js ফাইল তৈরি করুন।', true);
+        return;
+    }
+
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+
+    if (!email || !password) {
+        showAuthMessage('ইমেল এবং পাসওয়ার্ড সরবরাহ করুন।', true);
+        return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        showAuthMessage(`লগইন ব্যর্থ: ${error.message}`, true);
+        return;
+    }
+
+    await loadCurrentUser();
+    showAuthMessage('সফলভাবে লগইন হয়েছে।', false);
+    switchPage('menu');
+}
+
+async function signupUser() {
+    if (!isSupabaseReady()) {
+        showAuthMessage('Supabase configuration প্রয়োজন। config.js ফাইল তৈরি করুন।', true);
+        return;
+    }
+
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+
+    if (!email || !password) {
+        showAuthMessage('ইমেল এবং পাসওয়ার্ড সরবরাহ করুন।', true);
+        return;
+    }
+
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+        showAuthMessage(`সাইনআপ ব্যর্থ: ${error.message}`, true);
+        return;
+    }
+
+    showAuthMessage('সাইনআপ সফল। ইমেল যাচাইকরণ দেখুন।', false);
+}
+
+async function logoutUser() {
+    if (!isSupabaseReady()) {
+        showAuthMessage('Supabase configuration নেই।', true);
+        return;
+    }
+
+    await supabase.auth.signOut();
+    currentUser = null;
+    updateAuthUI();
+    showAuthMessage('লগআউট হয়েছে।', false);
+    switchPage('menu');
+}
+
+async function loadReportsFromSupabase() {
+    try {
+        const { data, error } = await supabase.from('reports').select('*');
+        if (error) throw error;
+        if (Array.isArray(data)) {
+            userSubmittedReports = data;
+            renderTrackingList();
+            renderAdminList();
+        }
+    } catch (error) {
+        console.warn('Unable to load Supabase reports:', error);
+    }
+}
+
+async function saveReportToSupabase(report) {
+    try {
+        const { data, error } = await supabase.from('reports').insert(report).select();
+        if (error) throw error;
+        return Array.isArray(data) ? data[0] : null;
+    } catch (error) {
+        console.warn('Unable to save report to Supabase:', error);
+        return null;
+    }
+}
+
+async function updateReportOnSupabase(reportId, changes) {
+    try {
+        await supabase.from('reports').update(changes).eq('id', reportId);
+    } catch (error) {
+        console.warn('Unable to update report on Supabase:', error);
+    }
+}
+
+async function deleteReportOnSupabase(reportId) {
+    try {
+        await supabase.from('reports').delete().eq('id', reportId);
+    } catch (error) {
+        console.warn('Unable to delete report on Supabase:', error);
+    }
+}
+
+async function loadReports() {
+    if (isSupabaseReady()) {
+        await loadReportsFromSupabase();
+    } else {
+        await loadReportsFromServer();
+    }
+}
+
+async function saveReport(report) {
+    if (isSupabaseReady()) {
+        return await saveReportToSupabase(report);
+    }
+    return await saveReportToServer(report);
+}
+
+function updateLocationText(message, details = '') {
+    const gpsText = document.getElementById('gps-text');
+    const gpsDetails = document.getElementById('gps-details');
+    if (gpsText) gpsText.innerText = message;
+    if (gpsDetails) gpsDetails.innerText = details;
+}
+
+function showLocationMap(lat, lon) {
+    const mapContainer = document.getElementById('location-map-container');
+    if (!mapContainer) return;
+    mapContainer.style.display = 'block';
+    const delta = 0.01;
+    const south = lat - delta;
+    const north = lat + delta;
+    const west = lon - delta;
+    const east = lon + delta;
+    mapContainer.innerHTML = `
+        <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${lat}%2C${lon}" loading="lazy"></iframe>
+        <a class="map-link" target="_blank" href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}">ম্যাপে দেখুন</a>
+    `;
+}
+
+function setUserLocation(position) {
+    const lat = position.coords.latitude.toFixed(6);
+    const lon = position.coords.longitude.toFixed(6);
+    const accuracy = Math.round(position.coords.accuracy);
+    lastLocationCoords = { lat: position.coords.latitude, lon: position.coords.longitude };
+    updateLocationText(`📍 বর্তমান স্থাণ: ${lat}, ${lon}`,
+        `প্রায় সঠিক: ±${accuracy} মিটার`);
+    showLocationMap(position.coords.latitude, position.coords.longitude);
+}
+
+function showLocationError(error) {
+    let message = 'লোকেশন পাওয়া যায়নি।';
+    if (error.code === 1) {
+        message = 'অ্যাপের জন্য লোকেশন অনুমতি দেয়া হয়নি।';
+    } else if (error.code === 2) {
+        message = 'লোকেশন সার্ভার পাওয়া যায়নি।';
+    } else if (error.code === 3) {
+        message = 'লোকেশন অনুমতি সময়সীমা পেরিয়েছে।';
+    }
+    updateLocationText(`⚠️ ${message}`, 'আপনার ব্রাউজারের লোকেশন সেটিংস পরীক্ষা করুন।');
+}
+
+function updateLocation() {
+    const mapContainer = document.getElementById('location-map-container');
+    if (mapContainer) mapContainer.style.display = 'none';
+    updateLocationText('📍 লোকেশন লোড হচ্ছে...', 'অপেক্ষা করুন...');
+
+    if (!navigator.geolocation) {
+        updateLocationText('⚠️ আপনার ব্রাউজার জিওলোকেশন সমর্থন করে না।');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(setUserLocation, showLocationError, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 12000
+    });
+}
 
 document.addEventListener("DOMContentLoaded", function() {
     console.log("App Initializing...");
     renderTrackingList();
     renderAdminList();
+    updateAuthUI();
+    loadCurrentUser();
+    loadReports();
 });
 
 function switchPage(pageId) {
@@ -24,11 +274,13 @@ function switchPage(pageId) {
     document.getElementById('page-admin').classList.remove('active-page');
     document.getElementById('page-emergency').classList.remove('active-page');
     document.getElementById('page-settings').classList.remove('active-page');
+    document.getElementById('page-auth').classList.remove('active-page');
     
     document.getElementById('btn-nav-menu').classList.remove('active');
     document.getElementById('btn-nav-report').classList.remove('active');
     document.getElementById('btn-nav-tracker').classList.remove('active');
     document.getElementById('btn-nav-settings').classList.remove('active');
+    document.getElementById('btn-nav-auth')?.classList.remove('active');
 
     document.getElementById('page-' + pageId).classList.add('active-page');
     
@@ -44,7 +296,13 @@ function switchPage(pageId) {
     else if (pageId === 'admin') headerTitle.innerText = "অ্যাকশন কন্ট্রোল প্যানেল";
     else if (pageId === 'emergency') headerTitle.innerText = "জরুরি সেবা";
     else if (pageId === 'settings') headerTitle.innerText = "অ্যাপ সেটিংস";
+    else if (pageId === 'auth') headerTitle.innerText = "অ্যাকাউন্ট লগইন";
+
+    if (pageId === 'emergency') {
+        updateLocation();
+    }
 }
+
 
 /**
  * এডমিন মোড সেটিংস টগলার
@@ -67,7 +325,7 @@ function logoutAdmin() {
     switchPage('menu');
 }
 
-function submitReportDemo() {
+async function submitReportDemo() {
     const categorySelect = document.getElementById('incident-category');
     const locationInput = document.getElementById('incident-location');
     const detailsInput = document.getElementById('incident-details');
@@ -92,18 +350,24 @@ function submitReportDemo() {
         finalPhone = "🔒 গোপন রাখা হয়েছে";
     }
 
-    const newReport = {
+    let newReport = {
         id: "#ALK" + Math.floor(1000 + Math.random() * 9000),
         category: categorySelect.options[categorySelect.selectedIndex].text,
         location: locationInput.value,
+        coordinates: lastLocationCoords ? `${lastLocationCoords.lat.toFixed(6)}, ${lastLocationCoords.lon.toFixed(6)}` : null,
         details: detailsInput.value || "কোনো বিবরণ দেওয়া হয়নি",
         status: "Pending",
         phone: finalPhone,
         mediaSrc: mediaUrl
     };
 
-    userSubmittedReports.unshift(newReport);
-    
+    const savedReport = await saveReport(newReport);
+    if (savedReport) {
+        userSubmittedReports.unshift(savedReport);
+    } else {
+        userSubmittedReports.unshift(newReport);
+    }
+
     renderTrackingList();
     renderAdminList();
 
@@ -152,6 +416,7 @@ function renderTrackingList() {
             <div style="font-size: 0.78rem; color: #4a4e69; background: #fdfaf6; padding: 8px; border-radius: 6px; border: 1px solid #ffe5d9;">
                 ${report.details}
             </div>
+            ${report.coordinates ? `<p style="font-size: 0.78rem; margin-top: 8px; color: #4a4e69;">📡 কোঅর্ডিনেট: ${report.coordinates}</p>` : ''}
         `;
         container.appendChild(card);
     });
@@ -260,24 +525,42 @@ function closeImageModal() {
     if (modal) modal.style.display = "none";
 }
 
-function updateReportStatus(reportId, newStatus) {
+async function updateReportStatus(reportId, newStatus) {
     const report = userSubmittedReports.find(r => r.id === reportId);
     if (report) {
         report.status = newStatus;
         renderTrackingList();
         renderAdminList();
-        
+
+        try {
+            await fetch(`${API_BASE_URL}/reports/${encodeURIComponent(reportId)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+        } catch (error) {
+            console.warn('Unable to update report status on server:', error);
+        }
+
         const cleanId = reportId.replace('#', '');
         document.getElementById(`body-${cleanId}`).style.display = "block";
         document.getElementById(`arrow-${cleanId}`).innerText = "🔼 বন্ধ করতে ট্যাপ করুন";
     }
 }
 
-function deleteReportRequest(reportId) {
+async function deleteReportRequest(reportId) {
     if (confirm("আপনি কি নিশ্চিতভাবে এই রিপোর্টটি সিস্টেম থেকে মুছে ফেলতে চান?")) {
         userSubmittedReports = userSubmittedReports.filter(r => r.id !== reportId);
         renderTrackingList();
         renderAdminList();
+
+        try {
+            await fetch(`${API_BASE_URL}/reports/${encodeURIComponent(reportId)}`, {
+                method: 'DELETE'
+            });
+        } catch (error) {
+            console.warn('Unable to delete report on server:', error);
+        }
     }
 }
 
@@ -287,7 +570,7 @@ function simulateAIPrioritization(value) {
     if(!value) { badge.style.display = "none"; return; }
     badge.style.display = "block";
     
-    if (value === "critical" || value === "critical_health") {
+    if (value === "critical" || value === "critical_health" || value === "critical_flood" || value === "critical_missing") {
         txt.innerText = "🔴 জরুরি / তাৎক্ষণিক ব্যবস্থা";
         badge.style.backgroundColor = "#ffe3e3"; badge.style.borderColor = "#ffb3b3"; badge.style.color = "#b71c1c";
     } else if (value === "medium" || value === "medium_env" || value === "medium_res") {
@@ -311,5 +594,13 @@ function togglePhoneField() {
 }
 
 function triggerSOSPanicAlert() {
-    alert('⚠️ SOS অ্যালার্ট সক্রিয় হয়েছে!\nআপনার বর্তমান জিপিএস লোকেশন সরাসরি মেন্টর এবং নিকটস্থ প্রশাসনের কাছে পাঠানো হয়েছে।');
+    alert('⚠️ SOS অ্যালার্ট সক্রিয় হয়েছে!\nআপনার বর্তমান জিপিএস লোকেশন সরাসরি মেন্টর এবং নিকটস্থ প্রশাসনের কাছে পাঠানো হয়েছে।');
+}
+
+function triggerFloodRescueAlert() {
+    alert('🌊 বন্যায় পানিবন্দী উদ্ধার নোটিশ পাঠানো হয়েছে।\nদয়া করে আপনার লোকেশন রিফ্রেশ করুন এবং নিরাপদ স্থানে থাকার চেষ্টা করুন।');
+}
+
+function triggerMissingPersonAlert() {
+    alert('🧭 হারিয়ে যাওয়া ব্যক্তি উদ্ধার নোটিশ পাঠানো হয়েছে।\nআপনার লোকেশন শেয়ার করা হলে উদ্ধারকারী দল দ্রুত আপনাকে খুঁজে পাবে।');
 }

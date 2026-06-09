@@ -34,7 +34,7 @@
                 <div class="menu-card card-yellow" onclick="switchPage('emergency')">
                     <div class="custom-icon icon-phone"><span></span></div>
                     <h4>জরুরি হেল্পলাইন</h4>
-                    <p>জাতীয় এবং প্রশাসনিক জরুরি হটলাইনসমূহ</p>
+                    <p>পানিবন্দী, হারিয়ে যাওয়া বা অন্যান্য টিম-মুখী উদ্ধার সেবা</p>
                 </div>
 
                 <div class="menu-card card-pastel" onclick="switchPage('tracker')">
@@ -43,7 +43,7 @@
                     <p>আপনার পাঠানো রিপোর্টের বর্তমান অবস্থা দেখুন</p>
                 </div>
 
-                <div class="menu-card card-pink" id="admin-menu-card" style="display: none;" onclick="accessAdminPanel()">
+                <div class="menu-card card-pink" onclick="accessAdminPanel()">
                     <div class="custom-icon icon-admin"><span></span></div>
                     <h4>অ্যাকশন প্যানেল</h4>
                     <p>প্রিফেক্ট ও মেন্টরদের দ্বারা তথ্য যাচাইকরণ</p>
@@ -63,6 +63,8 @@
                     <option value="critical">চুরি / ডাকাতি</option>
                     <option value="critical">মাদকসেবন</option>
                     <option value="critical">বাল্যবিবাহ / ইভটিজিং</option>
+                    <option value="critical_flood">বন্যায় পানিবন্দী</option>
+                    <option value="critical_missing">হারিয়ে যাওয়া ব্যক্তি</option>
                     <option value="medium">স্কুল ড্রপআউট / শিশুশ্রম</option>
                     <option value="general">নিরাপত্তা / রাস্তার গর্ত / ভাঙা ব্রিজ / বিদ্যুতের ঝুঁকি</option>
                     <option value="medium_env">অগ্নিকাণ্ডের ঝুঁকি / পরিবেশ / নদী দূষণ</option>
@@ -148,9 +150,16 @@
             <div class="location-card">
                 <strong>আপনার বর্তমান অবস্থান:</strong><br>
                 <span id="gps-text">📍 জিপিএস এখনও উক্ত অ্যাপ এ নেই।</span>
+                <div id="gps-details" style="margin-top: 8px; font-size: 0.85rem; color: #4a4e69;"></div>
+                <button class="btn btn-primary" style="margin-top: 12px; width: auto; padding: 10px 14px;" onclick="updateLocation()">লোকেশন রিফ্রেশ করুন</button>
+                <p style="margin-top: 10px; font-size: 0.88rem; color: #5d4037;">এই লোকেশনটি ব্যবহার করে বন্যা বা হারিয়ে যাওয়া অবস্থায় উদ্ধারকারী দল আপনাকে দ্রুত খুঁজে পাবে।</p>
             </div>
 
+            <div id="location-map-container" class="location-map-card" style="display:none; margin-bottom: 18px;"></div>
+
             <div class="emergency-grid">
+                <button class="btn btn-emergency-tile tile-red" onclick="triggerFloodRescueAlert()">🌊 বন্যায় পানিবন্দী উদ্ধার</button>
+                <button class="btn btn-emergency-tile tile-orange" onclick="triggerMissingPersonAlert()">🧭 হারিয়ে যাওয়া ব্যক্তি উদ্ধার</button>
                 <a href="tel:999" class="btn btn-emergency-tile tile-red">🚨 জাতীয় জরুরি সেবা (999)</a>
                 <a href="tel:109" class="btn btn-emergency-tile tile-orange">👧 নারী ও শিশু নির্যাতন প্রতিরোধ (109)</a>
                 <a href="tel:333" class="btn btn-emergency-tile tile-yellow">🏛️ সরকারি সেবা ও তথ্য (333)</a>
@@ -168,7 +177,7 @@
             <div class="settings-section" style="margin-top: 10px;">
                 <h3>🛡️ প্রিফেক্ট ও মেন্টর কন্ট্রোল</h3>
                 <div class="setting-toggle-item">
-                    <span>এডমিন মোড সক্রিয় করুন</span>
+                    <span>এডমিন প্যানেল দেখাতে টগল করুন</span>
                     <input type="checkbox" id="admin-mode-toggle" onchange="toggleAdminMode(this.checked)">
                 </div>
             </div>
@@ -213,6 +222,6 @@
     </nav>
 </div>
 
-<script src="app.js"></script>
+<script src="app-new.js"></script>
 </body>
 </html>
